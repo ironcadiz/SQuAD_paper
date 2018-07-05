@@ -5,7 +5,6 @@ import re
 import numpy as np
 import json
 
-
 """## Embeddings
 
 Para usar los embeddings e inyectarlos en el modelo de Keras primero se intento lo siguiente:
@@ -32,7 +31,7 @@ import numpy as np
 import os
 
 # Usamos los glove vectors 300D de wikipedia 2014. Por limitación de memoria no podemos usar un corpus más grande.
-glove_file = datapath(os.getcwd() + '/mnt/nas2/GrimaRepo/freddie/glove.6B.300d.txt')
+glove_file = datapath('/mnt/nas2/GrimaRepo/freddie/glove.6B.300d.txt')
 tmp_file = get_tmpfile(os.getcwd() + "/test_word2vec.txt")
 print("Running script")
 glove2word2vec(glove_file, tmp_file)
@@ -162,7 +161,7 @@ TRAIN_COUNT = data_counter(train)
 """## Declaración del Modelo"""
 
 # Importamos dependencias
-from keras.layers import Input, Concatenate, Dense, Reshape, Activation,Multiply, Dot, Add, Lambda,SeparableConv1D, BatchNormalization,TimeDistributed,Dropout,Reshape,Softmax
+from keras.layers import Input, Concatenate, Dense, Reshape, Activation,Multiply, Dot, Add, Lambda,SeparableConv1D, BatchNormalization,TimeDistributed,Dropout,Reshape,Softmax, Reshape, Flatten
 from keras.models import Model, load_model
 from keras.callbacks import ModelCheckpoint
 from keras.optimizers import Adam
@@ -172,8 +171,8 @@ import keras.backend as K
 import keras.initializers
 import numpy as np
 
-'''
 # Para elegir GPU o multicore
+'''
 num_cores = 4
 CPU= False
 GPU= not CPU
@@ -190,7 +189,6 @@ config = tf.ConfigProto(intra_op_parallelism_threads=num_cores,\
 session = tf.Session(config=config)
 K.set_session(session)
 '''
-
 ## Attention 
 
 class ScaledDotProductAttention():
@@ -425,28 +423,29 @@ B = Dot(axes=(2,1))([B, context_ff])
 A_attention = Multiply()([context_ff,A])
 B_attention = Multiply()([context_ff,B])
 
-stacked_blocks_input=Concatenate(axis=1)([context_ff,A,A_attention,B_attention])
+stacked_blocks_input=Concatenate(axis=2)([context_ff,A,A_attention,B_attention])
+
+stacked_blocks_resized = SeparableConv1D(filters=FILTERS,kernel_size=STACKED_KERNEL_SIZE,name="conv_resize",padding="same")(stacked_blocks_input)
+
 
 me = ModelEncoder(N_REPS, BLOCK_CONV_LAYERS_STACKED,FILTERS,STACKED_KERNEL_SIZE,N_HEADS,FILTERS,FILTERS,FILTERS,FILTERS,DROPOUT)
 
-stacked_encoder_blocks_0 = me(stacked_blocks_input)
+stacked_encoder_blocks_0 = me(stacked_blocks_resized)
 stacked_encoder_blocks_1 = me(stacked_encoder_blocks_0)
 stacked_encoder_blocks_2 = me(stacked_encoder_blocks_1)
 
 ## Output layer
 
-#suponemos  que existen los stacked_encoder_blocks 0 1 y 2
+start_layer = Concatenate(axis=2)([stacked_encoder_blocks_0,stacked_encoder_blocks_1]) # no estoy seguro del axis
+start_dense = TimeDistributed(Dense(1,use_bias=False))(start_layer)
+start_reshape = Flatten()(start_dense)
+start_output = Softmax()(start_reshape)
 
-start_layer = Concatenate(axis=1)([stacked_encoder_blocks_0,stacked_encoder_blocks_1]) # no estoy seguro del axis
-start_dense = Dense(MAX_CONTEXT,use_bias=False)(start_layer)
-start_output = Softmax()(start_dense)
 
-
-end_layer = Concatenate(axis=1)([stacked_encoder_blocks_0,stacked_encoder_blocks_2]) # no estoy seguro del axis
-end_dense = Dense(MAX_CONTEXT, use_bias=False)(end_layer)
-end_output = Softmax()(end_dense)
-
-## model compile
+end_layer = Concatenate(axis=2)([stacked_encoder_blocks_0,stacked_encoder_blocks_2]) # no estoy seguro del axis
+end_dense = TimeDistributed(Dense(1, use_bias=False))(end_layer)
+end_reshape = Flatten()(end_dense)
+end_output = Softmax()(end_reshape)
 
 model = Model(inputs=[context_input,question_input] ,outputs =[start_output,end_output])
 model.summary()
@@ -478,9 +477,7 @@ callbacks_list = [checkpoint]
 
 model.compile(optimizer=OPTIMIZER,loss=LOSS, metrics=['accuracy'])
 model.fit_generator(generator, steps_per_epoch = TRAIN_COUNT//BATCH_SIZE, max_queue_size=5, epochs = EPOCHS, verbose=1, callbacks=callbacks_list, use_multiprocessing=True, workers=3)
-
 model = load_model('my_model.h5')
-
 #entrenamos desde archivo guardado
 '''
 model = load_model('weights.hdf5')
@@ -498,6 +495,3 @@ model.summary()
 model.compile(optimizer=OPTIMIZER,loss=LOSS, metrics=['accuracy'])
 model.fit_generator(generator, steps_per_epoch = TRAIN_COUNT//BATCH_SIZE, max_queue_size=5, epochs = EPOCHS, verbose=1, callbacks=callbacks_list, use_multiprocessing=True, workers=3)
 '''
-
-
-

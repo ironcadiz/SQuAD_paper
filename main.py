@@ -396,23 +396,24 @@ def attention(batch):
 ## Model params
 GLOVE_DIM=300
 KERNEL_SIZE=7
-FILTERS=64
+FILTERS=128
 BLOCK_CONV_LAYERS=4
 N_HEADS=4
 DROPOUT=0.1
 N_REPS = 3
 BLOCK_CONV_LAYERS_STACKED = 2
 STACKED_KERNEL_SIZE=5
+D_ATTENTION= FILTERS//N_HEADS
 
 ## Question embedding
 question_input = Input(shape=(MAX_QUESTIONS,GLOVE_DIM),name="question_input")
 highway_question = highway_layers(question_input,2,activation="relu", gate_bias=-3,name="question_highway")
-question_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,FILTERS,FILTERS,FILTERS,DROPOUT,name="question_eeb")(highway_question)
+question_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,D_ATTENTION,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT,name="question_eeb")(highway_question)
 
 ## context embedding
 context_input = Input(shape=(MAX_CONTEXT,GLOVE_DIM),name="context_input")
 highway_context = highway_layers(context_input,2,activation="relu", gate_bias=-3,name="context_highway")
-context_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,FILTERS,FILTERS,FILTERS,DROPOUT,name="context_eeb")(highway_context)
+context_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,D_ATTENTION,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT,name="context_eeb")(highway_context)
 
 ## Context question attention
 concat = Concatenate(axis=1)([context_ff,question_ff])
@@ -436,7 +437,7 @@ stacked_blocks_input=Concatenate(axis=2)([context_ff,A,A_attention,B_attention])
 stacked_blocks_resized = SeparableConv1D(filters=FILTERS,kernel_size=STACKED_KERNEL_SIZE,depthwise_regularizer=l2(3e-7),pointwise_regularizer=l2(3e-7),bias_regularizer=l2(3e-7),name="conv_resize",padding="same")(stacked_blocks_input)
 
 
-me = ModelEncoder(N_REPS, BLOCK_CONV_LAYERS_STACKED,FILTERS,STACKED_KERNEL_SIZE,N_HEADS,FILTERS,FILTERS,FILTERS,FILTERS,DROPOUT)
+me = ModelEncoder(N_REPS, BLOCK_CONV_LAYERS_STACKED,FILTERS,STACKED_KERNEL_SIZE,N_HEADS,D_ATTENTION,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT)
 
 stacked_encoder_blocks_0 = me(stacked_blocks_resized)
 stacked_encoder_blocks_1 = me(stacked_encoder_blocks_0)
@@ -484,7 +485,7 @@ class History(Callback):
         self.epoch = []
         self.history = {}
         self.epochs_count = 0
-        self.metrics_path = 'metrics_mask.txt'
+        self.metrics_path = 'metrics_big.txt'
         with open(self.metrics_path, 'a') as fp:
             fp.write('epoch\t softmax_3_acc\t softmax_4_acc\t softmax_3_loss\t softmax_4_loss\t val_softmax_3_acc\t val_softmax_4_acc\t val_softmax_3_loss\t val_softmax_4_loss\t \n')
 
@@ -518,7 +519,7 @@ OPTIMIZER=Adam(beta_1=0.8, beta_2=0.999, epsilon=1e-7)
 LOSS= 'categorical_crossentropy'
 generator= TensorSequence(train, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
 dev_generator = TensorSequence(test, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
-checkpoint = ModelCheckpoint(filepath='mask.hdf5',monitor="val_loss", verbose=1,save_weights_only=True, save_best_only=True)
+checkpoint = ModelCheckpoint(filepath='big.hdf5',monitor="val_loss", verbose=1,save_weights_only=True, save_best_only=True)
 history = History()
 
 callbacks_list = [checkpoint, history]

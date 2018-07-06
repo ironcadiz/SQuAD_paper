@@ -106,7 +106,10 @@ class TensorSequence(Sequence):
                 for question in paragraph['qas']:
                     # Tomamos la primera respuesta para generar el dataset final
                     answer = question['answers'][0]
-                    self.dataset.append([paragraph['context_tokenized'],question['question_tokenized'],answer['answer_word_start'],answer['answer_word_end']])
+                    context = paragraph['context_tokenized'] if len(paragraph['context_tokenized']) <= context_length else paragraph['context_tokenized'][:context_length]
+                    question_t = question['question_tokenized'] if len(question['question_tokenized']) <= question_length else question['question_tokenized'][:question_length]
+                    self.dataset.append([context,question_t,min(answer['answer_word_start'],context_length-1),min(answer['answer_word_end'],context_length-1)])
+
 
     # steps per batch
     def __len__(self):
@@ -154,9 +157,9 @@ def max_question_par(paragraph):
 def max_paragraph(document):
     return max(document['paragraphs'], key=lambda x: len(max_question_par(x)['question_tokenized']))
 
-MAX_CONTEXT = len(max(map(lambda x: max_context(x), train), key=lambda x:len(x['context_tokenized']))['context_tokenized'])
-MAX_QUESTIONS = len(max_question_par(max_paragraph(max(train, key= lambda x:  len(max_question_par(max_paragraph(x))['question_tokenized']))))['question_tokenized'])
 TRAIN_COUNT = data_counter(train)
+MAX_CONTEXT = 400
+MAX_QUESTIONS = 30
 
 """## Declaración del Modelo"""
 
@@ -388,11 +391,11 @@ def attention(batch):
 ## Model params
 GLOVE_DIM=300
 KERNEL_SIZE=7
-FILTERS=128
+FILTERS=64
 BLOCK_CONV_LAYERS=4
-N_HEADS=8
+N_HEADS=4
 DROPOUT=0.1
-N_REPS = 7
+N_REPS = 3
 BLOCK_CONV_LAYERS_STACKED = 2
 STACKED_KERNEL_SIZE=5
 

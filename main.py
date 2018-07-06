@@ -468,19 +468,61 @@ Luego de mucho optimizar e iterar se logró bajar el tiempo de entrenamiento a 3
 Luego se paro el entrenamiento y se volvió a iniciar esta véz con un learning rate mas alto (`0.003`), lo cual funcionó bien inicialmente hasta que en algun momento el gradiente explotó y el accuracy bajo estrepitosamente.
 """
 
-# Parametros
-BATCH_SIZE=32
-EPOCHS=50
-OPTIMIZER='adam'
-LOSS= 'categorical_crossentropy'
-generator= TensorSequence(train,BATCH_SIZE,embedder,MAX_CONTEXT,MAX_QUESTIONS)
+class History(Callback):
+    """Callback that records events into a `History` object.
+    This callback is automatically applied to
+    every Keras model. The `History` object
+    gets returned by the `fit` method of models.
+    """
 
-checkpoint = ModelCheckpoint(filepath='weights.hdf5',monitor="loss", verbose=1)
+    def on_train_begin(self, logs=None):
+        self.epoch = []
+        self.history = {}
+        self.epochs_count = 0
+        self.metrics_path = 'metrics.txt'
+        with open(self.metrics_path, 'a') as fp:
+            fp.write('epoch\t softmax_3_acc\t softmax_4_acc\t softmax_3_loss\t softmax_4_loss\t val_softmax_3_acc\t val_softmax_4_acc\t val_softmax_3_loss\t val_softmax_4_loss\t \n')
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        self.epoch.append(epoch)
+        self.epochs_count += 1
+        print(logs)
+        for k, v in logs.items():
+            self.history.setdefault(k, []).append(v)
+          
+        with open(self.metrics_path, 'a') as fp:
+            fp.write('{}\t {}\t {}\t {}\t {}\t {}\t {}\t {}\t {}\t \n'.format(self.epochs_count,
+                                                                              self.history['softmax_3_acc'][-1], 
+                                                                              self.history['softmax_4_acc'][-1], 
+                                                                              self.history['softmax_3_loss'][-1], 
+                                                                              self.history['softmax_4_loss'][-1],
+                                                                              self.history['val_softmax_3_acc'][-1],
+                                                                              self.history['val_softmax_4_acc'][-1],
+                                                                              self.history['val_softmax_3_loss'][-1],
+                                                                              self.history['val_softmax_4_loss'][-1],
+                                                                             
+                                                                             ))
+
+
+
+# Parametros
+BATCH_SIZE=16
+EPOCHS=50
+OPTIMIZER=Adam(beta_1=0.8, beta_2=0.999, epsilon=1e-7)
+LOSS= 'categorical_crossentropy'
+generator= TensorSequence(train, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
+dev_generator = TensorSequence(test, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
+checkpoint = ModelCheckpoint(filepath='weights.hdf5',monitor="loss", verbose=1,save_weights_only=True)
+history = History()
+
+callbacks_list = [checkpoint, history]
+
 callbacks_list = [checkpoint]
 
 model.compile(optimizer=OPTIMIZER,loss=LOSS, metrics=['accuracy'])
-model.fit_generator(generator, steps_per_epoch = TRAIN_COUNT//BATCH_SIZE, max_queue_size=5, epochs = EPOCHS, verbose=1, callbacks=callbacks_list, use_multiprocessing=True, workers=3)
-model = load_model('my_model.h5')
+model.fit_generator(generator, validation_data=dev_generator, steps_per_epoch = TRAIN_COUNT//BATCH_SIZE, max_queue_size=5, epochs = EPOCHS, verbose=1, callbacks=callbacks_list, use_multiprocessing=True, workers=3)
+
 #entrenamos desde archivo guardado
 '''
 model = load_model('weights.hdf5')

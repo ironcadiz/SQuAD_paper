@@ -31,7 +31,7 @@ import numpy as np
 import os
 
 # Usamos los glove vectors 300D de wikipedia 2014. Por limitación de memoria no podemos usar un corpus más grande.
-glove_file = datapath('/mnt/nas2/GrimaRepo/freddie/glove.6B.300d.txt')
+glove_file = datapath(os.getcwd() +'/glove.6B.300d.txt')
 tmp_file = get_tmpfile(os.getcwd() + "/test_word2vec.txt")
 print("Running script")
 glove2word2vec(glove_file, tmp_file)

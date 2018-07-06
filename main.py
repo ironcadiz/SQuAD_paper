@@ -164,7 +164,7 @@ MAX_QUESTIONS = 30
 """## Declaración del Modelo"""
 
 # Importamos dependencias
-from keras.layers import Input, Concatenate, Dense, Reshape, Activation,Multiply, Dot, Add, Lambda,SeparableConv1D, BatchNormalization,TimeDistributed,Dropout,Reshape,Softmax, Reshape, Flatten
+from keras.layers import Input, Concatenate, Dense, Reshape, Activation,Multiply, Dot, Add, Lambda,SeparableConv1D, BatchNormalization,TimeDistributed,Dropout,Reshape,Softmax, Reshape, Flatten,Masking
 from keras.models import Model, load_model
 from keras.callbacks import ModelCheckpoint,Callback
 from keras.optimizers import Adam
@@ -518,7 +518,7 @@ OPTIMIZER=Adam(beta_1=0.8, beta_2=0.999, epsilon=1e-7)
 LOSS= 'categorical_crossentropy'
 generator= TensorSequence(train, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
 dev_generator = TensorSequence(test, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
-checkpoint = ModelCheckpoint(filepath='mask.hdf5',monitor="loss", verbose=1,save_weights_only=True)
+checkpoint = ModelCheckpoint(filepath='mask.hdf5',monitor="val_loss", verbose=1,save_weights_only=True, save_best_only=True)
 history = History()
 
 callbacks_list = [checkpoint, history]

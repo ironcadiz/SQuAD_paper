@@ -166,7 +166,7 @@ MAX_QUESTIONS = 30
 # Importamos dependencias
 from keras.layers import Input, Concatenate, Dense, Reshape, Activation,Multiply, Dot, Add, Lambda,SeparableConv1D, BatchNormalization,TimeDistributed,Dropout,Reshape,Softmax, Reshape, Flatten
 from keras.models import Model, load_model
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint,Callback
 from keras.optimizers import Adam
 from keras.regularizers import l2
 import tensorflow as tf

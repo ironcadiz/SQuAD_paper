@@ -408,12 +408,12 @@ D_ATTENTION= FILTERS//N_HEADS
 ## Question embedding
 question_input = Input(shape=(MAX_QUESTIONS,GLOVE_DIM),name="question_input")
 highway_question = highway_layers(question_input,2,activation="relu", gate_bias=-3,name="question_highway")
-question_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,D_ATTENTION,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT,name="question_eeb")(highway_question)
+question_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT,name="question_eeb")(highway_question)
 
 ## context embedding
 context_input = Input(shape=(MAX_CONTEXT,GLOVE_DIM),name="context_input")
 highway_context = highway_layers(context_input,2,activation="relu", gate_bias=-3,name="context_highway")
-context_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,D_ATTENTION,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT,name="context_eeb")(highway_context)
+context_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT,name="context_eeb")(highway_context)
 
 ## Context question attention
 concat = Concatenate(axis=1)([context_ff,question_ff])

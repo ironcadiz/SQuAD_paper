@@ -437,7 +437,7 @@ stacked_blocks_input=Concatenate(axis=2)([context_ff,A,A_attention,B_attention])
 stacked_blocks_resized = SeparableConv1D(filters=FILTERS,kernel_size=STACKED_KERNEL_SIZE,depthwise_regularizer=l2(3e-7),pointwise_regularizer=l2(3e-7),bias_regularizer=l2(3e-7),name="conv_resize",padding="same")(stacked_blocks_input)
 
 
-me = ModelEncoder(N_REPS, BLOCK_CONV_LAYERS_STACKED,FILTERS,STACKED_KERNEL_SIZE,N_HEADS,D_ATTENTION,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT)
+me = ModelEncoder(N_REPS, BLOCK_CONV_LAYERS_STACKED,FILTERS,STACKED_KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT)
 
 stacked_encoder_blocks_0 = me(stacked_blocks_resized)
 stacked_encoder_blocks_1 = me(stacked_encoder_blocks_0)

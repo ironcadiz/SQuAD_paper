@@ -194,19 +194,24 @@ K.set_session(session)
 '''
 ## Attention 
 
+
 class ScaledDotProductAttention():
-	def __init__(self, d_model, attn_dropout=0.1):
-		self.temper = np.sqrt(d_model)
-		self.dropout = Dropout(attn_dropout)
-	def __call__(self, q, k, v, mask):
-		attn = Lambda(lambda x:K.batch_dot(x[0],x[1],axes=[2,2])/self.temper)([q, k])
-		if mask is not None:
-			mmask = Lambda(lambda x:(-1e+10)*(1-x))(mask)
-			attn = Add()([attn, mmask])
-		attn = Activation('softmax')(attn)
-		attn = self.dropout(attn)
-		output = Lambda(lambda x:K.batch_dot(x[0], x[1]))([attn, v])
-		return output
+    def __init__(self, d_model, attn_dropout=0.1):
+        self.temper = np.sqrt(d_model)
+        self.dropout = Dropout(attn_dropout)
+        self.attn = Lambda(lambda x:K.batch_dot(x[0],x[1],axes=[2,2])/self.temper)
+        self.mask = Masking(mask_value=0.0)
+        self.soft = Activation('softmax')
+        self.output = Lambda(lambda x:K.batch_dot(x[0], x[1]))
+        
+    def __call__(self, q, k, v, mask):
+        attn = self.attn([q, k])
+        attn = self.mask(attn)
+        attn = self.soft(attn)
+        attn = self.dropout(attn)
+        output = self.output([attn, v])
+        return output
+
 
 #https://github.com/Lsdefine/attention-is-all-you-need-keras/blob/master/transformer.py
 class MultiHeadAttention():
@@ -479,7 +484,7 @@ class History(Callback):
         self.epoch = []
         self.history = {}
         self.epochs_count = 0
-        self.metrics_path = 'metrics.txt'
+        self.metrics_path = 'metrics_mask.txt'
         with open(self.metrics_path, 'a') as fp:
             fp.write('epoch\t softmax_3_acc\t softmax_4_acc\t softmax_3_loss\t softmax_4_loss\t val_softmax_3_acc\t val_softmax_4_acc\t val_softmax_3_loss\t val_softmax_4_loss\t \n')
 
@@ -513,13 +518,13 @@ OPTIMIZER=Adam(beta_1=0.8, beta_2=0.999, epsilon=1e-7)
 LOSS= 'categorical_crossentropy'
 generator= TensorSequence(train, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
 dev_generator = TensorSequence(test, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
-checkpoint = ModelCheckpoint(filepath='weights.hdf5',monitor="loss", verbose=1,save_weights_only=True)
+checkpoint = ModelCheckpoint(filepath='mask.hdf5',monitor="loss", verbose=1,save_weights_only=True)
 history = History()
 
 callbacks_list = [checkpoint, history]
 
 model.compile(optimizer=OPTIMIZER,loss=LOSS, metrics=['accuracy'])
-model.load_weights('weights.hdf5')
+#model.load_weights('weights.hdf5')
 model.fit_generator(generator, validation_data=dev_generator, steps_per_epoch = TRAIN_COUNT//BATCH_SIZE, max_queue_size=5, epochs = EPOCHS, verbose=1, callbacks=callbacks_list, use_multiprocessing=True, workers=3)
 
 #entrenamos desde archivo guardado

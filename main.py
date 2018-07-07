@@ -486,7 +486,7 @@ class History(Callback):
         self.epoch = []
         self.history = {}
         self.epochs_count = 0
-        self.metrics_path = 'metrics_big.txt'
+        self.metrics_path = 'metrics_full.txt'
         with open(self.metrics_path, 'a') as fp:
             fp.write('epoch\t softmax_3_acc\t softmax_4_acc\t softmax_3_loss\t softmax_4_loss\t val_softmax_3_acc\t val_softmax_4_acc\t val_softmax_3_loss\t val_softmax_4_loss\t \n')
 
@@ -520,13 +520,13 @@ OPTIMIZER=Adam(beta_1=0.8, beta_2=0.999, epsilon=1e-7)
 LOSS= 'categorical_crossentropy'
 generator= TensorSequence(train, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
 dev_generator = TensorSequence(test, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
-checkpoint = ModelCheckpoint(filepath='big.hdf5',monitor="val_softmax_3_acc", verbose=1,save_weights_only=True, save_best_only=True)
+checkpoint = ModelCheckpoint(filepath='full.hdf5',monitor="val_softmax_3_acc", verbose=1,save_weights_only=True, save_best_only=True)
 history = History()
 
 callbacks_list = [checkpoint, history]
 
 model.compile(optimizer=OPTIMIZER,loss=LOSS, metrics=['accuracy'])
-model.load_weights('big.hdf5')
+#model.load_weights('full.hdf5')
 model.fit_generator(generator, validation_data=dev_generator, steps_per_epoch = TRAIN_COUNT//BATCH_SIZE, max_queue_size=10, epochs = EPOCHS, verbose=1, callbacks=callbacks_list, use_multiprocessing=True, workers=3)
 
 #entrenamos desde archivo guardado

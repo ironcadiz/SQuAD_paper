@@ -400,21 +400,24 @@ KERNEL_SIZE=7
 FILTERS=128
 BLOCK_CONV_LAYERS=4
 N_HEADS=8
-DROPOUT=0.2
+LAYER_DROPOUT=0.2
 N_REPS = 7
 BLOCK_CONV_LAYERS_STACKED = 2
 STACKED_KERNEL_SIZE=5
 D_ATTENTION= FILTERS//N_HEADS
+INPUT_DROPOUT=0.1
 
 ## Question embedding
 question_input = Input(shape=(MAX_QUESTIONS,GLOVE_DIM),name="question_input")
+question_input = Dropout(INPUT_DROPOUT)(question_input)
 highway_question = highway_layers(question_input,2,activation="relu", gate_bias=-3,name="question_highway")
-question_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT,name="question_eeb")(highway_question)
+question_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,LAYER_DROPOUT,name="question_eeb")(highway_question)
 
 ## context embedding
 context_input = Input(shape=(MAX_CONTEXT,GLOVE_DIM),name="context_input")
+context_input = Dropout(INPUT_DROPOUT)(context_input)
 highway_context = highway_layers(context_input,2,activation="relu", gate_bias=-3,name="context_highway")
-context_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT,name="context_eeb")(highway_context)
+context_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,LAYER_DROPOUT,name="context_eeb")(highway_context)
 
 ## Context question attention
 concat = Concatenate(axis=1)([context_ff,question_ff])
@@ -438,7 +441,7 @@ stacked_blocks_input=Concatenate(axis=2)([context_ff,A,A_attention,B_attention])
 stacked_blocks_resized = SeparableConv1D(filters=FILTERS,kernel_size=STACKED_KERNEL_SIZE,depthwise_regularizer=l2(L2_REG),pointwise_regularizer=l2(L2_REG),bias_regularizer=l2(L2_REG),name="conv_resize",padding="same")(stacked_blocks_input)
 
 
-me = ModelEncoder(N_REPS, BLOCK_CONV_LAYERS_STACKED,FILTERS,STACKED_KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT)
+me = ModelEncoder(N_REPS, BLOCK_CONV_LAYERS_STACKED,FILTERS,STACKED_KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,LAYER_DROPOUT)
 
 stacked_encoder_blocks_0 = me(stacked_blocks_resized)
 stacked_encoder_blocks_1 = me(stacked_encoder_blocks_0)

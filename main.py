@@ -405,7 +405,7 @@ N_REPS = 7
 BLOCK_CONV_LAYERS_STACKED = 2
 STACKED_KERNEL_SIZE=5
 D_ATTENTION= FILTERS//N_HEADS
-INPUT_DROPOUT=0.1
+INPUT_DROPOUT=0.2
 
 ## Question embedding
 question_input = Input(shape=(MAX_QUESTIONS,GLOVE_DIM),name="question_input")

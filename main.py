@@ -519,7 +519,7 @@ OPTIMIZER=Adam(beta_1=0.8, beta_2=0.999, epsilon=1e-7)
 LOSS= 'categorical_crossentropy'
 generator= TensorSequence(train, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
 dev_generator = TensorSequence(test, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
-checkpoint = ModelCheckpoint(filepath='big.hdf5',monitor="val_loss", verbose=1,save_weights_only=True, save_best_only=True)
+checkpoint = ModelCheckpoint(filepath='big.hdf5',monitor="val_softmax_3_acc", verbose=1,save_weights_only=True, save_best_only=True)
 history = History()
 
 callbacks_list = [checkpoint, history]

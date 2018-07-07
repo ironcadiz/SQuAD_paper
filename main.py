@@ -160,6 +160,7 @@ def max_paragraph(document):
 TRAIN_COUNT = data_counter(train)
 MAX_CONTEXT = 400
 MAX_QUESTIONS = 30
+L2_REG=1e-5
 
 """## Declaración del Modelo"""
 
@@ -225,12 +226,12 @@ class MultiHeadAttention():
       self.ks_layers = []
       self.vs_layers = []
       for _ in range(n_head):
-        self.qs_layers.append(TimeDistributed(Dense(d_k, kernel_regularizer=l2(3e-7),use_bias=False)))
-        self.ks_layers.append(TimeDistributed(Dense(d_k, kernel_regularizer=l2(3e-7),use_bias=False)))
-        self.vs_layers.append(TimeDistributed(Dense(d_v, kernel_regularizer=l2(3e-7),use_bias=False)))
+        self.qs_layers.append(TimeDistributed(Dense(d_k, kernel_regularizer=l2(L2_REG),use_bias=False)))
+        self.ks_layers.append(TimeDistributed(Dense(d_k, kernel_regularizer=l2(L2_REG),use_bias=False)))
+        self.vs_layers.append(TimeDistributed(Dense(d_v, kernel_regularizer=l2(L2_REG),use_bias=False)))
       self.attention = ScaledDotProductAttention(d_model)
       #self.layer_norm = BatchNormalization(axis=1)
-      self.w_o = TimeDistributed(Dense(d_model,kernel_regularizer=l2(3e-7), bias_regularizer=l2(3e-7)))
+      self.w_o = TimeDistributed(Dense(d_model,kernel_regularizer=l2(L2_REG), bias_regularizer=l2(L2_REG)))
 
     def __call__(self, q, k, v, mask=None):
       d_k, d_v = self.d_k, self.d_v
@@ -265,7 +266,7 @@ class EncoderConv():
         self.convs = []
         for i in range(self.n_convs):
             norm_layer = BatchNormalization(axis = 1,name=name+"_norm_{}".format(i))
-            conv_layer = SeparableConv1D(filters=filters,kernel_size=kernel,depthwise_regularizer=l2(3e-7),pointwise_regularizer=l2(3e-7),bias_regularizer=l2(3e-7),name=name+"_conv_{}".format(i),padding="same")
+            conv_layer = SeparableConv1D(filters=filters,kernel_size=kernel,depthwise_regularizer=l2(L2_REG),pointwise_regularizer=l2(L2_REG),bias_regularizer=l2(L2_REG),name=name+"_conv_{}".format(i),padding="same")
             self.norms.append(norm_layer)
             self.convs.append(conv_layer)
 
@@ -307,7 +308,7 @@ class FeedForward():
         self.activation = activation
         self.name = name
         self.norm_layer = BatchNormalization(axis=1,name=name+"_norm")
-        self.ff = Dense(ndims, kernel_regularizer=l2(3e-7),bias_regularizer=l2(3e-7),activation=activation, name=name+"_ff")
+        self.ff = Dense(ndims, kernel_regularizer=l2(L2_REG),bias_regularizer=l2(L2_REG),activation=activation, name=name+"_ff")
       
     def __call__(self,value):
         norm = self.norm_layer(value)
@@ -361,12 +362,12 @@ def highway_layers(value, n_layers, activation="tanh", gate_bias=-3,name="highwa
     dim = K.int_shape(value)[-1]
     gate_bias_initializer = keras.initializers.Constant(gate_bias)
     for i in range(n_layers):     
-        gate = Dense(units=dim, bias_initializer=gate_bias_initializer,kernel_regularizer=l2(3e-7),bias_regularizer=l2(3e-7),name=name+"_dense_1_{}".format(i))(value)
+        gate = Dense(units=dim, bias_initializer=gate_bias_initializer,kernel_regularizer=l2(L2_REG),bias_regularizer=l2(L2_REG),name=name+"_dense_1_{}".format(i))(value)
         gate = Activation("sigmoid",name=name+"_activation_1_{}".format(i))(gate)
         negated_gate = Lambda(
             lambda x: 1.0 - x,
             output_shape=(dim,))(gate)
-        transformed = Dense(units=dim,kernel_regularizer=l2(3e-7),bias_regularizer=l2(3e-7),name=name+"_dense_2_{}".format(i))(value)
+        transformed = Dense(units=dim,kernel_regularizer=l2(L2_REG),bias_regularizer=l2(L2_REG),name=name+"_dense_2_{}".format(i))(value)
         transformed = Activation(activation,name=name+"_activation_2_{}".format(i))(value)
         transformed_gated = Multiply(name=name+"_multiply_1_{}".format(i))([gate, transformed])
         identity_gated = Multiply(name=name+"_multiply_2_{}".format(i))([negated_gate, value])
@@ -399,7 +400,7 @@ KERNEL_SIZE=7
 FILTERS=128
 BLOCK_CONV_LAYERS=4
 N_HEADS=8
-DROPOUT=0.1
+DROPOUT=0.2
 N_REPS = 3
 BLOCK_CONV_LAYERS_STACKED = 2
 STACKED_KERNEL_SIZE=5
@@ -418,7 +419,7 @@ context_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,
 ## Context question attention
 concat = Concatenate(axis=1)([context_ff,question_ff])
 lambda_concat = Lambda(attention)(concat)
-attention_dense = TimeDistributed(Dense(1,kernel_regularizer=l2(3e-7),use_bias=False))(lambda_concat)
+attention_dense = TimeDistributed(Dense(1,kernel_regularizer=l2(L2_REG),use_bias=False))(lambda_concat)
 attention_matrix = Reshape((MAX_CONTEXT,MAX_QUESTIONS))(attention_dense)
 attention_matrix_bar = Softmax()(attention_matrix)
 A = Dot(axes=(2,1))([attention_matrix_bar, question_ff])
@@ -434,7 +435,7 @@ B_attention = Multiply()([context_ff,B])
 
 stacked_blocks_input=Concatenate(axis=2)([context_ff,A,A_attention,B_attention])
 
-stacked_blocks_resized = SeparableConv1D(filters=FILTERS,kernel_size=STACKED_KERNEL_SIZE,depthwise_regularizer=l2(3e-7),pointwise_regularizer=l2(3e-7),bias_regularizer=l2(3e-7),name="conv_resize",padding="same")(stacked_blocks_input)
+stacked_blocks_resized = SeparableConv1D(filters=FILTERS,kernel_size=STACKED_KERNEL_SIZE,depthwise_regularizer=l2(L2_REG),pointwise_regularizer=l2(L2_REG),bias_regularizer=l2(L2_REG),name="conv_resize",padding="same")(stacked_blocks_input)
 
 
 me = ModelEncoder(N_REPS, BLOCK_CONV_LAYERS_STACKED,FILTERS,STACKED_KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,DROPOUT)
@@ -446,13 +447,13 @@ stacked_encoder_blocks_2 = me(stacked_encoder_blocks_1)
 ## Output layer
 
 start_layer = Concatenate(axis=2)([stacked_encoder_blocks_0,stacked_encoder_blocks_1]) # no estoy seguro del axis
-start_dense = TimeDistributed(Dense(1,kernel_regularizer=l2(3e-7),use_bias=False))(start_layer)
+start_dense = TimeDistributed(Dense(1,kernel_regularizer=l2(L2_REG),use_bias=False))(start_layer)
 start_reshape = Flatten()(start_dense)
 start_output = Softmax()(start_reshape)
 
 
 end_layer = Concatenate(axis=2)([stacked_encoder_blocks_0,stacked_encoder_blocks_2]) # no estoy seguro del axis
-end_dense = TimeDistributed(Dense(1,kernel_regularizer=l2(3e-7), use_bias=False))(end_layer)
+end_dense = TimeDistributed(Dense(1,kernel_regularizer=l2(L2_REG), use_bias=False))(end_layer)
 end_reshape = Flatten()(end_dense)
 end_output = Softmax()(end_reshape)
 
@@ -525,7 +526,7 @@ history = History()
 callbacks_list = [checkpoint, history]
 
 model.compile(optimizer=OPTIMIZER,loss=LOSS, metrics=['accuracy'])
-#model.load_weights('weights.hdf5')
+model.load_weights('big.hdf5')
 model.fit_generator(generator, validation_data=dev_generator, steps_per_epoch = TRAIN_COUNT//BATCH_SIZE, max_queue_size=5, epochs = EPOCHS, verbose=1, callbacks=callbacks_list, use_multiprocessing=True, workers=3)
 
 #entrenamos desde archivo guardado

@@ -413,14 +413,14 @@ INPUT_DROPOUT=0.1
 
 ## Question embedding
 question_input = Input(shape=(MAX_QUESTIONS,GLOVE_DIM),name="question_input")
-question_input = Dropout(INPUT_DROPOUT)(question_input)
-highway_question = highway_layers(question_input,2,activation="relu", gate_bias=-3,name="question_highway")
+question_drop = Dropout(INPUT_DROPOUT)(question_input)
+highway_question = highway_layers(question_drop,2,activation="relu", gate_bias=-3,name="question_highway")
 question_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,LAYER_DROPOUT,name="question_eeb")(highway_question)
 
 ## context embedding
 context_input = Input(shape=(MAX_CONTEXT,GLOVE_DIM),name="context_input")
-context_input = Dropout(INPUT_DROPOUT)(context_input)
-highway_context = highway_layers(context_input,2,activation="relu", gate_bias=-3,name="context_highway")
+context_drop= Dropout(INPUT_DROPOUT)(context_input)
+highway_context = highway_layers(context_drop,2,activation="relu", gate_bias=-3,name="context_highway")
 context_ff = EncoderBlock(BLOCK_CONV_LAYERS,FILTERS,KERNEL_SIZE,N_HEADS,FILTERS,D_ATTENTION,D_ATTENTION,FILTERS,LAYER_DROPOUT,name="context_eeb")(highway_context)
 
 ## Context question attention

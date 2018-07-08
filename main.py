@@ -160,7 +160,7 @@ def max_paragraph(document):
 TRAIN_COUNT = data_counter(train)
 MAX_CONTEXT = 400
 MAX_QUESTIONS = 30
-L2_REG=1e-5
+L2_REG=3e-7
 
 """## Declaración del Modelo"""
 
@@ -332,11 +332,15 @@ class EncoderBlock():
     self.encoder_conv = EncoderConv(n_convs, filters, kernels, name=name+"_conv")
     self.self_attention = SelfAttention(n_heads, d_model, d_k, d_v, dropout,name=name+"_self_attention")
     self.ff = FeedForward(ndims, activation,name=name+"_ff")
+    self.dp_layer = Dropout(self.dropout)
+    self.dp_layer_att = Dropout(self.dropout)
     
   def __call__(self, value):
     enc_conv = self.encoder_conv(value)
     self_att = self.self_attention(enc_conv)
+    self_att = self.dp_layer_att(self_att)
     value = self.ff(self_att)
+    value = self.dp_layer(value)
     return value
   
 class ModelEncoder():
@@ -400,12 +404,12 @@ KERNEL_SIZE=7
 FILTERS=128
 BLOCK_CONV_LAYERS=4
 N_HEADS=8
-LAYER_DROPOUT=0.2
+LAYER_DROPOUT=0.1
 N_REPS = 7
 BLOCK_CONV_LAYERS_STACKED = 2
 STACKED_KERNEL_SIZE=5
 D_ATTENTION= FILTERS//N_HEADS
-INPUT_DROPOUT=0.2
+INPUT_DROPOUT=0.1
 
 ## Question embedding
 question_input = Input(shape=(MAX_QUESTIONS,GLOVE_DIM),name="question_input")
@@ -437,6 +441,7 @@ A_attention = Multiply()([context_ff,A])
 B_attention = Multiply()([context_ff,B])
 
 stacked_blocks_input=Concatenate(axis=2)([context_ff,A,A_attention,B_attention])
+stacked_blocks_input=Dropout(LAYER_DROPOUT)
 
 stacked_blocks_resized = SeparableConv1D(filters=FILTERS,kernel_size=STACKED_KERNEL_SIZE,depthwise_regularizer=l2(L2_REG),pointwise_regularizer=l2(L2_REG),bias_regularizer=l2(L2_REG),name="conv_resize",padding="same")(stacked_blocks_input)
 
@@ -489,7 +494,7 @@ class History(Callback):
         self.epoch = []
         self.history = {}
         self.epochs_count = 0
-        self.metrics_path = 'metrics_full.txt'
+        self.metrics_path = 'metrics_final.txt'
         with open(self.metrics_path, 'a') as fp:
             fp.write('epoch\t softmax_3_acc\t softmax_4_acc\t softmax_3_loss\t softmax_4_loss\t val_softmax_3_acc\t val_softmax_4_acc\t val_softmax_3_loss\t val_softmax_4_loss\t \n')
 
@@ -523,7 +528,7 @@ OPTIMIZER=Adam(beta_1=0.8, beta_2=0.999, epsilon=1e-7)
 LOSS= 'categorical_crossentropy'
 generator= TensorSequence(train, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
 dev_generator = TensorSequence(test, BATCH_SIZE, embedder, MAX_CONTEXT, MAX_QUESTIONS)
-checkpoint = ModelCheckpoint(filepath='full.hdf5',monitor="val_softmax_3_acc", verbose=1,save_weights_only=True, save_best_only=True)
+checkpoint = ModelCheckpoint(filepath='final.hdf5',monitor="val_softmax_3_acc", verbose=1,save_weights_only=True, save_best_only=True)
 history = History()
 
 callbacks_list = [checkpoint, history]

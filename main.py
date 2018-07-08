@@ -405,7 +405,7 @@ FILTERS=128
 BLOCK_CONV_LAYERS=4
 N_HEADS=8
 LAYER_DROPOUT=0.1
-N_REPS = 7
+N_REPS = 3
 BLOCK_CONV_LAYERS_STACKED = 2
 STACKED_KERNEL_SIZE=5
 D_ATTENTION= FILTERS//N_HEADS
@@ -535,7 +535,7 @@ callbacks_list = [checkpoint, history]
 
 model.compile(optimizer=OPTIMIZER,loss=LOSS, metrics=['accuracy'])
 #model.load_weights('full.hdf5')
-model.fit_generator(generator, validation_data=dev_generator, steps_per_epoch = TRAIN_COUNT//BATCH_SIZE, max_queue_size=10, epochs = EPOCHS, verbose=1, callbacks=callbacks_list, use_multiprocessing=True, workers=3)
+model.fit_generator(generator, validation_data=dev_generator, steps_per_epoch = TRAIN_COUNT//BATCH_SIZE, max_queue_size=5, epochs = EPOCHS, verbose=1, callbacks=callbacks_list, use_multiprocessing=True, workers=3)
 
 #entrenamos desde archivo guardado
 '''
